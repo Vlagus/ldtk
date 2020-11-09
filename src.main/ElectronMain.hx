@@ -4,18 +4,25 @@ import js.Node.__dirname;
 import js.Node.process;
 
 class ElectronMain {
-	static var mainWindow : electron.main.BrowserWindow;
+	static var mainWindow:electron.main.BrowserWindow;
+	static var mainWindowState:electronWindowState.ElectronWindowState;
 
 	static function main() {
-
 		App.on('ready', function() {
+			mainWindowState = new electronWindowState.ElectronWindowState({});
+
 			// Init window
 			mainWindow = new electron.main.BrowserWindow({
-				webPreferences: { nodeIntegration:true },
+				webPreferences: {nodeIntegration: true},
 				fullscreenable: true,
 				show: false,
 				title: "LDtk",
+				x: mainWindowState.x,
+				y: mainWindowState.y,
+				width: mainWindowState.width,
+				height: mainWindowState.height,
 			});
+			mainWindowState.manage(mainWindow);
 
 			// Menu
 			#if debug
@@ -26,7 +33,9 @@ class ElectronMain {
 
 			// Start renderer part
 			mainWindow.show();
-			mainWindow.maximize();
+			if (mainWindowState.x == null) {
+				mainWindow.maximize();
+			}
 			mainWindow.loadURL('file://$__dirname/app.html');
 			mainWindow.on('closed', function() {
 				mainWindow = null;
@@ -42,13 +51,12 @@ class ElectronMain {
 			App.quit();
 		});
 
-
 		// *** invoke/handle *****************************************************
 
 		IpcMain.handle("appReady", function(ev) {
 			// Window close button
 			mainWindow.on('close', function(ev) {
-				if( !dn.electron.ElectronUpdater.isIntalling ) {
+				if (!dn.electron.ElectronUpdater.isIntalling) {
 					ev.preventDefault();
 					mainWindow.webContents.send("winClose");
 				}
@@ -59,14 +67,13 @@ class ElectronMain {
 			App.exit();
 		});
 
-		IpcMain.handle("setFullScreen", function(event,args) {
+		IpcMain.handle("setFullScreen", function(event, args) {
 			mainWindow.setFullScreen(args);
 		});
 
-		IpcMain.handle("setWinTitle", function(event,args) {
+		IpcMain.handle("setWinTitle", function(event, args) {
 			mainWindow.title = args;
 		});
-
 
 		// *** sendSync/on *****************************************************
 
@@ -89,21 +96,23 @@ class ElectronMain {
 
 	#if debug
 	static function enableDebugMenu() {
-		var menu = electron.main.Menu.buildFromTemplate([{
-			label: "Debug tools",
-			submenu: cast [
-				{
-					label: "Reload",
-					click: function() mainWindow.reload(),
-					accelerator: "CmdOrCtrl+R",
-				},
-				{
-					label: "Dev tools",
-					click: function() mainWindow.webContents.toggleDevTools(),
-					accelerator: "CmdOrCtrl+Shift+I",
-				},
-			]
-		}]);
+		var menu = electron.main.Menu.buildFromTemplate([
+			{
+				label: "Debug tools",
+				submenu: cast [
+					{
+						label: "Reload",
+						click: function() mainWindow.reload(),
+						accelerator: "CmdOrCtrl+R",
+					},
+					{
+						label: "Dev tools",
+						click: function() mainWindow.webContents.toggleDevTools(),
+						accelerator: "CmdOrCtrl+Shift+I",
+					},
+				]
+			}
+		]);
 
 		mainWindow.setMenu(menu);
 	}
